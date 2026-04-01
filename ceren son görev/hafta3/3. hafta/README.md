@@ -1,3 +1,0 @@
-# 3. Hafta: Sentetik Veri Analizi ve Görselleştirme
-
-Bu klasörde yer alan `veri.csv` dosyası, bir üretim tesisindeki makine parçalarına ait fiziksel ölçümleri temsil etmek üzere tamamen sentetik olarak türetilmiş bir veri setidir. Veri setindeki **Degisken1**, üretilen parçaların uzunluklarını ifade eder ve birimi **milimetre (mm)**'dir; **Degisken2** ise aynı parçaların ağırlığını temsil eder ve birimi **gram (g)**'dır. Ölçümler, üretim süreçlerindeki doğal değişkenliği yansıtacak biçimde oluşturulmuş olup, her iki değişken de istatistiksel standartlara uygun olarak **normal dağılım (çan eğrisi)** özelliği göstermektedir.
