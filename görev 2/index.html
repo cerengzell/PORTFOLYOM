@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Collector | Ceren Betül Gözel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #020617; overflow: hidden; font-family: 'Inter', sans-serif; }
+        #gameCanvas { background: radial-gradient(circle at center, #0f172a 0%, #020617 100%); cursor: crosshair; }
+        .ui-panel { pointer-events: none; user-select: none; }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+    <div class="absolute top-0 left-0 w-full p-8 flex justify-between items-start ui-panel z-10">
+        <div class="space-y-1">
+            <h1 class="text-xs tracking-[0.3em] text-sky-500 font-bold uppercase">Sistem Analizi</h1>
+            <p class="text-2xl font-light text-slate-100">Ceren Betül Gözel</p>
+        </div>
+        <div class="text-right">
+            <p class="text-xs tracking-widest text-slate-500 uppercase mb-1">Toplanan Veri</p>
+            <div class="text-6xl font-black text-sky-400 tabular-nums" id="score">00</div>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="gameOver" class="hidden absolute inset-0 bg-slate-950/98 flex flex-col items-center justify-center text-white p-6 z-50">
+        <div class="glass-panel p-10 rounded-2xl text-center max-w-md w-full border-t-4 border-rose-500 shadow-2xl">
+            <div class="w-16 h-16 bg-rose-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <span class="text-rose-500 text-3xl">!</span>
+            </div>
+            <h2 class="text-2xl font-bold tracking-tight text-slate-100 mb-2">VERİ SETİ BOZULDU</h2>
+            <p class="text-slate-500 text-sm mb-8">Aykırı değerler (Outliers) temizlenemedi.</p>
+            
+            <div class="bg-slate-900/50 py-4 rounded-xl mb-8">
+                <span class="text-xs uppercase text-slate-500 block mb-1">Başarı Puanı</span>
+                <p id="finalScore" class="text-5xl font-black text-sky-400"></p>
+            </div>
+
+            <button onclick="resetGame()" class="w-full py-4 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold transition-all duration-300 shadow-lg shadow-sky-900/20 active:scale-95">
+                SİSTEMİ YENİLE
+            </button>
+        </div>
+    </div>
+
+    <div class="absolute bottom-8 flex gap-8 ui-panel text-[10px] tracking-widest uppercase font-bold text-slate-600">
+        <div class="flex items-center gap-2">
+            <div class="w-2 h-2 rounded-full bg-sky-500"></div> Mavi: Temiz Veri
+        </div>
+        <div class="flex items-center gap-2">
+            <div class="w-2 h-2 rounded-full bg-rose-600"></div> Kırmızı: Hatalı Veri
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const gameOverScreen = document.getElementById('gameOver');
+        const finalScoreText = document.getElementById('finalScore');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let score = 0;
+        let gameActive = true;
+        let particles = [];
+        let frameCount = 0;
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = -40;
+                this.radius = Math.random() * 6 + 8;
+                this.speed = Math.random() * 3 + 3;
+                this.type = Math.random() > 0.28 ? 'clean' : 'outlier';
+                this.color = this.type === 'clean' ? '#0ea5e9' : '#e11d48';
+            }
+
+            update() {
+                this.y += this.speed;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 25;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+                ctx.closePath();
+            }
+        }
+
+        function spawn() {
+            // Zamanla zorluk artışı için frame kontrolü
+            let rate = score > 200 ? 25 : 35;
+            if (frameCount % rate === 0) {
+                particles.push(new Particle());
+            }
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (!gameActive) return;
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                const dist = Math.hypot(e.clientX - p.x, e.clientY - p.y);
+
+                if (dist < p.radius + 25) { // Tıklama toleransı
+                    if (p.type === 'clean') {
+                        score += 10;
+                        scoreElement.innerText = score.toString().padStart(2, '0');
+                    } else {
+                        endGame();
+                    }
+                    particles.splice(i, 1);
+                    break;
+                }
+            }
+        });
+
+        function endGame() {
+            gameActive = false;
+            gameOverScreen.classList.remove('hidden');
+            finalScoreText.innerText = score;
+        }
+
+        function resetGame() {
+            score = 0;
+            scoreElement.innerText = "00";
+            particles = [];
+            gameActive = true;
+            gameOverScreen.classList.add('hidden');
+            animate();
+        }
+
+        function animate() {
+            if (!gameActive) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            frameCount++;
+
+            spawn();
+
+            particles.forEach((p, index) => {
+                p.update();
+                p.draw();
+                if (p.y > canvas.height + 60) particles.splice(index, 1);
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        animate();
+    </script>
+</body>
+</html>

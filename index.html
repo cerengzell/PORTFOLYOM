@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Öğrenci Portfolyosu</title>
+    <!-- Confetti Library -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+
+        :root {
+            /* Toz Pembe Teması İçin Renkler */
+            --bg-color: #ecc5ce; /* Toz pembe arka plan */
+            --text-color: #4a3b42; /* Koyu kahve tonu metin */
+            --accent-primary: #ffffff; /* Işık efekti için beyaz */
+            --accent-secondary: #fbdfe4; /* Daha açık toz pembe uyumlu ışık */
+            --card-bg: rgba(255, 255, 255, 0.4); /* Cam efekti için yarı saydam beyaz */
+            --btn-bg: rgba(255, 255, 255, 0.5);
+            --btn-hover: rgba(255, 255, 255, 0.9);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Arkaplan Animasyonu ve Geometrisi (Işıklar) */
+        .bg-elements {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0; /* body arka planının üstünde, blokların altında */
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(90px);
+            opacity: 0.6; /* Açık temada biraz daha belirgin olsun */
+            transition: transform 0.5s ease-out;
+        }
+
+        .blob-1 {
+            top: 5%;
+            left: 5%;
+            width: 400px;
+            height: 400px;
+            background: var(--accent-primary);
+        }
+
+        .blob-2 {
+            bottom: 5%;
+            right: 5%;
+            width: 450px;
+            height: 450px;
+            background: var(--accent-secondary);
+        }
+
+        /* Blok Arkaplan (Kutu gibi) */
+        .block-bg-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1; /* Ortadaki kartın altında, ışıkların üstünde */
+            display: grid;
+            box-sizing: border-box;
+            gap: 6px;
+            padding: 6px;
+        }
+
+        .bg-block {
+            box-sizing: border-box;
+            background-color: rgba(255, 255, 255, 0.25);
+            border-radius: 8px; /* Kutu köşe yumuşaklığı */
+            /* 3 Boyutlu Cam Kutu Efekti */
+            border-top: 1px solid rgba(255, 255, 255, 0.8);
+            border-left: 1px solid rgba(255, 255, 255, 0.8);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            border-right: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: inset 1px 1px 4px rgba(255, 255, 255, 0.6), 2px 2px 5px rgba(0, 0, 0, 0.04);
+            
+            transition: background-color 0.2s ease, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease, opacity 0.3s ease;
+            cursor: pointer;
+        }
+
+        .bg-block:hover {
+            background-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: inset 1px 1px 6px rgba(255, 255, 255, 0.8), 4px 6px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .bg-block.exploded {
+            transform: scale(0) rotate(15deg);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Yönerge Toast Mesajı (Açık Tema İçin) */
+        .instruction-toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 1);
+            padding: 1rem 1.5rem;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            z-index: 100;
+            animation: slideInUp 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            max-width: 350px;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .instruction-toast.hidden {
+            opacity: 0;
+            transform: translateY(50px);
+            pointer-events: none;
+        }
+
+        .instruction-icon {
+            font-size: 1.5rem;
+            animation: bounce 2s infinite;
+        }
+
+        .instruction-text {
+            font-size: 0.9rem;
+            line-height: 1.4;
+            color: var(--text-color);
+            flex: 1;
+        }
+
+        .instruction-close {
+            background: rgba(0, 0, 0, 0.05);
+            border: none;
+            color: var(--text-color);
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            transition: background 0.2s;
+        }
+
+        .instruction-close:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Konteyner Kartı */
+        .container {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            border-radius: 24px;
+            padding: 3rem 2.5rem;
+            width: 90%;
+            max-width: 450px;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(180, 130, 140, 0.4), 0 0 15px rgba(255, 255, 255, 0.4) inset;
+            animation: fadeIn 0.8s ease-out forwards;
+            position: relative; 
+            z-index: 10; /* Blokların üstünde tıklanabilmesini sağlar */
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Profil Kısmı */
+        .profile {
+            margin-bottom: 2.5rem;
+        }
+
+        .profile img {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            object-fit: cover;
+            object-position: top center; 
+            border: 6px solid #ffffff;
+            box-shadow: 0 10px 25px rgba(180, 130, 140, 0.4);
+            margin-bottom: 1.5rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            background-color: var(--accent-primary);
+        }
+
+        .profile img:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 35px rgba(180, 130, 140, 0.5);
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #2b1f24;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            color: #7b656d;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        /* Butonlar */
+        .links {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 1.1rem;
+            background: var(--btn-bg);
+            color: var(--text-color);
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1.05rem;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            letter-spacing: 0.3px;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.8), transparent);
+            transform: skewX(-20deg);
+            transition: left 0.5s ease;
+        }
+
+        .btn:hover::before {
+            left: 150%;
+        }
+
+        .btn:hover {
+            background: var(--btn-hover);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(180, 130, 140, 0.2);
+            border-color: rgba(255, 255, 255, 1);
+            color: #2b1f24;
+        }
+
+        .btn:active {
+            transform: translateY(-1px);
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .container {
+                width: 92%;
+                padding: 2.5rem 1.5rem;
+            }
+            .profile img {
+                width: 120px;
+                height: 120px;
+            }
+            h1 {
+                font-size: 1.6rem;
+            }
+            .btn {
+                padding: 1rem;
+                font-size: 1rem;
+            }
+            .instruction-toast {
+                bottom: 20px;
+                right: 20px;
+                left: 20px;
+                max-width: none;
+            }
+            .block-bg-container {
+                gap: 4px;
+                padding: 4px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Arkaplan Renkli Soft Işıkları (En altta) -->
+    <div class="bg-elements">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+
+    <!-- Kutu Blokları (Işıkların üstünde) -->
+    <div class="block-bg-container" id="blockBgContainer"></div>
+
+    <!-- Yönerge Mesajı -->
+    <div class="instruction-toast" id="instructionToast">
+        <div class="instruction-icon">🤍</div>
+        <div class="instruction-text">
+            Arkaplandaki kutulara tıkla, inci tozları dökülsün! ✨
+        </div>
+        <button class="instruction-close" onclick="hideInstruction()" aria-label="Kapat">✕</button>
+    </div>
+
+    <!-- Ana Portfolyo İçeriği -->
+    <div class="container">
+        <!-- Profil ve Başlık Alanı -->
+        <div class="profile">
+            <img src="profile/image.png" alt="Profil Fotoğrafı">
+            <h1>Ceren Betül Gözel</h1>
+            <p class="subtitle">Portfolyo & Proje Dosyaları</p>
+        </div>
+
+        <!-- Yönlendirme Butonları -->
+        <div class="links">
+            <a href="görev 2/index.html" class="btn" target="_blank">Uygulamam</a>
+            <a href="grafik.png" class="btn" target="_blank">Grafik</a>
+            <a href="veri.csv" class="btn" target="_blank">Data</a>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Kutu Blokları Izgarasını Oluşturma ---
+        const blockContainer = document.getElementById('blockBgContainer');
+        let toastHidden = false;
+        let currentWidth = window.innerWidth;
+        let currentHeight = window.innerHeight;
+
+        function createBlocks() {
+            blockContainer.innerHTML = ''; 
+            const blockSize = window.innerWidth > 480 ? 65 : 55; // Bilgisayarda 65px, mobilde 55px kutular
+            
+            // Grid alanını hesapla
+            const cols = Math.floor(window.innerWidth / blockSize);
+            const rows = Math.floor(window.innerHeight / blockSize);
+            
+            blockContainer.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            blockContainer.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+
+            const totalBlocks = cols * rows;
+
+            for(let i = 0; i < totalBlocks; i++) {
+                const block = document.createElement('div');
+                block.className = 'bg-block';
+                
+                block.addEventListener('click', function(e) {
+                    if (!toastHidden) hideInstruction();
+
+                    if(!this.classList.contains('exploded')) {
+                        this.classList.add('exploded');
+                        triggerPearlDust(e.clientX, e.clientY);
+                    }
+                });
+
+                blockContainer.appendChild(block);
+            }
+        }
+
+        // Beyaz İnci Tozu Efekti (Confetti)
+        function triggerPearlDust(x, y) {
+            const normalizedX = x / window.innerWidth;
+            const normalizedY = y / window.innerHeight;
+
+            confetti({
+                particleCount: 150, /* İnci tozları daha yoğun ve fazla */
+                spread: 80, /* Biraz daha geniş bir alana saçılsın */
+                origin: { x: normalizedX, y: normalizedY },
+                colors: ['#ffffff', '#fdfbf7', '#f4f0ec', '#f8f9fa'], /* İnci ve saf beyaz tonları */
+                shapes: ['circle'], /* Sadece yuvarlak taneler */
+                scalar: 0.6, /* Küçük tanecikler */
+                ticks: 160, /* Ekranda daha uzun süre kalsın */
+                gravity: 1.0, /* Biraz daha yavaş süzülsün */
+                strokeWidth: 0,
+                disableForReducedMotion: true
+            });
+        }
+
+        // Ekran boyutu değişirse kutuları tekrar ayarla
+        window.addEventListener('resize', () => {
+            if (window.innerWidth !== currentWidth || window.innerHeight !== currentHeight) {
+                currentWidth = window.innerWidth;
+                currentHeight = window.innerHeight;
+                // Yeniden dizilimi performansı etkilememesi için ufak gecikme ile yap
+                setTimeout(createBlocks, 150);
+            }
+        });
+
+        createBlocks(); // İlk yüklemede blokları oluştur
+
+        // --- 2. Yönerge Toast Mesajı ---
+        function hideInstruction() {
+            toastHidden = true;
+            document.getElementById('instructionToast').classList.add('hidden');
+        }
+
+        // --- 3. Blob Mouse Takip Efekti ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const blob1 = document.querySelector('.blob-1');
+            const blob2 = document.querySelector('.blob-2');
+            
+            if (window.matchMedia("(any-hover: hover)").matches) {
+                document.addEventListener('mousemove', (e) => {
+                    const x = (e.clientX / window.innerWidth) - 0.5;
+                    const y = (e.clientY / window.innerHeight) - 0.5;
+                    
+                    window.requestAnimationFrame(() => {
+                        if (blob1 && blob2) {
+                            blob1.style.transform = `translate(${x * 40}px, ${y * 40}px)`;
+                            blob2.style.transform = `translate(${x * -60}px, ${y * -60}px)`;
+                        }
+                    });
+                });
+            }
+
+            // 10 sn sonra toast'ı otomatik gizle
+            setTimeout(() => {
+                if(!toastHidden) {
+                    hideInstruction();
+                }
+            }, 10000);
+        });
+    </script>
+</body>
+</html>
